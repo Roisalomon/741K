@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Discussion privée</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --line: #334155;
+      --txt: #e2e8f0;
+      --mute: #94a3b8;
+      --main: #6366f1;
+      --me: #4f46e5;
+      --other: #334155;
+      --danger: #ef4444
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--txt);
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 15px;
+      background: var(--main);
+      color: #fff
+    }
+
+    button:hover {
+      opacity: .9
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: default
+    }
+
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--txt)
+    }
+
+    button.danger {
+      background: var(--danger)
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--txt);
+      font-size: 16px;
+      outline: none
+    }
+
+    input:focus {
+      border-color: var(--main)
+    }
+
+    .center {
+      margin: auto;
+      width: min(92vw, 400px);
+      background: var(--card);
+      padding: 28px;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center
+    }
+
+    .err {
+      color: var(--danger);
+      font-size: 14px;
+      min-height: 18px
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--card);
+      border-bottom: 1px solid var(--line)
+    }
+
+    header h2 {
+      flex: 1;
+      font-size: 17px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    #adminView {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0
+    }
+
+    #dash {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .row {
+      display: flex;
+      gap: 8px
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer
+    }
+
+    .item:hover {
+      background: #273449
+    }
+
+    .item .info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .item .name {
+      font-weight: 600
+    }
+
+    .item .sub {
+      font-size: 13px;
+      color: var(--mute);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .empty {
+      color: var(--mute);
+      text-align: center;
+      padding: 10px
+    }
+
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0
+    }
+
+    #msgs {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto
+    }
+
+    .msg {
+      max-width: 78%;
+      padding: 9px 13px;
+      border-radius: 16px;
+      word-wrap: break-word;
+      white-space: pre-wrap
+    }
+
+    .msg small {
+      display: block;
+      font-size: 11px;
+      opacity: .7;
+      margin-top: 3px;
+      text-align: right
+    }
+
+    .msg.left {
+      align-self: flex-start;
+      background: var(--other);
+      border-bottom-left-radius: 4px
+    }
+
+    .msg.right {
+      align-self: flex-end;
+      background: var(--me);
+      border-bottom-right-radius: 4px
+    }
+
+    .msg audio {
+      max-width: 100%;
+      height: 36px
+    }
+
+    .sys {
+      align-self: center;
+      font-size: 13px;
+      color: var(--mute);
+      background: var(--card);
+      padding: 6px 12px;
+      border-radius: 20px;
+      text-align: center
+    }
+
+    #composer {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: var(--card);
+      border-top: 1px solid var(--line);
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+      border-radius: 12px 12px 0 0
+    }
+
+    #rec.on {
+      background: var(--danger);
+      animation: p 1s infinite
+    }
+
+    @keyframes p {
+      50% {
+        opacity: .5
+      }
+    }
+
+    .counter {
+      font-size: 13px;
+      color: var(--mute);
+      white-space: nowrap
+    }
+
+    .counter.warn {
+      color: #f59e0b
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10
+    }
+
+    .modal .box {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      width: min(94vw, 440px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center
+    }
+
+    .codebox {
+      font-family: monospace;
+      font-size: 18px;
+      word-break: break-all;
+      background: var(--bg);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px dashed var(--main);
+      user-select: all
+    }
+
+    .note {
+      font-size: 13px;
+      color: var(--mute)
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="login" class="center">
+    <h1>🔒 Discussion privée</h1>
+    <p class="note">Entrez le code qui vous a été donné.</p>
+    <input id="codeInput" type="password" placeholder="Votre code" autocomplete="off" autocapitalize="off"
+      spellcheck="false">
+    <div class="err" id="loginErr"></div>
+    <button id="loginBtn">Entrer</button>
+  </div>
+
+  <div id="adminView" class="hidden">
+    <header>
+      <h2>🛠️ Tableau de bord</h2><button class="ghost" id="logout1">Déconnexion</button>
+    </header>
+    <div id="dash">
+      <div class="panel">
+        <h3>Créer une discussion</h3>
+        <div class="row"><input id="newName" placeholder="Nom de la personne"><button id="createBtn">Créer</button>
+        </div>
+        <div class="err" id="createErr"></div>
+      </div>
+      <div class="panel">
+        <h3>Mes discussions (<span id="nbUsers">0</span>)</h3>
+        <div id="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat" class="hidden">
+    <header>
+      <button class="ghost hidden" id="backBtn">←</button>
+      <h2 id="chatTitle">Discussion</h2>
+      <span class="counter" id="counter"></span>
+      <button class="ghost" id="logout2">Quitter</button>
+    </header>
+    <div id="msgs"></div>
+    <div id="composer">
+      <input id="msgInput" placeholder="Écrire un message…" autocomplete="off" maxlength="2000">
+      <button id="rec" class="ghost" title="Message vocal">🎤</button>
+      <button id="sendBtn">Envoyer</button>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="box">
+      <h3>✅ Discussion créée</h3>
+      <p>Code à donner à <b id="mName"></b> :</p>
+      <div class="codebox" id="mCode"></div>
+      <p class="note">⚠️ Ce code ne sera <b>plus jamais affiché</b> : copie-le maintenant. Il n'est pas conservé en
+        clair sur le serveur.</p>
+      <div class="row"><button id="copyBtn" style="flex:1">Copier</button><button class="ghost" id="mClose"
+          style="flex:1">Fermer</button></div>
+    </div>
+  </div>
+
+  <script>
+    const MAX_AUDIO_S = 30;
+    const $ = id => document.getElementById(id);
+    const show = id => $(id).classList.remove("hidden");
+    const hide = id => $(id).classList.add("hidden");
+    const fmt = ts => new Date(ts).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+    let auth = null;       // {token, role}
+    let openConv = null;   // id de la discussion ouverte (admin)
+    let timer = null;
+    const audioCache = new Map();
+
+    /* ---------- API ---------- */
+    async function api(path, opts = {}) {
+      const res = await fetch("/api/" + path, {
+        method: opts.method || "GET",
+        headers: Object.assign({ "Content-Type": "application/json" }, auth ? { Authorization: "Bearer " + auth.token } : {}),
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      let data = {}; try { data = await res.json(); } catch (e) { }
+      if (res.status === 401 && auth) { logout(); throw new Error("Session expirée."); }
+      if (!res.ok) throw new Error(data.error || "Erreur " + res.status);
+      return data;
+    }
+
+    /* ---------- Vues / session ---------- */
+    function setView(v) {
+      ["login", "adminView", "chat"].forEach(hide);
+      show(v);
+      clearInterval(timer); timer = null;
+      if (v === "adminView") { loadDash(); timer = setInterval(loadDash, 5000); }
+      if (v === "chat") { loadMsgs(true); timer = setInterval(() => loadMsgs(false), 3000); }
+    }
+    function save() { sessionStorage.setItem("auth", JSON.stringify(auth)); }
+    function logout() {
+      auth = null; openConv = null; sessionStorage.removeItem("auth"); audioCache.clear();
+      $("codeInput").value = ""; setView("login");
+    }
+    function start() {
+      if (!auth) return setView("login");
+      if (auth.role === "admin") { show("backBtn"); openConv = null; setView("adminView"); }
+      else { hide("backBtn"); setView("chat"); }
+    }
+
+    async function login() {
+      $("loginErr").textContent = ""; $("loginBtn").disabled = true;
+      try {
+        const r = await api("login", { method: "POST", body: { code: $("codeInput").value.trim() } });
+        auth = { token: r.token, role: r.role }; save(); $("codeInput").value = ""; start();
+      } catch (e) { $("loginErr").textContent = e.message; }
+      $("loginBtn").disabled = false;
+    }
+
+    /* ---------- Dashboard ---------- */
+    async function loadDash() {
+      try {
+        const { users, max } = await api("admin/users");
+        $("nbUsers").textContent = users.length;
+        const list = $("list"); list.innerHTML = "";
+        if (!users.length) { list.innerHTML = '<div class="empty">Aucune discussion.</div>'; return; }
+        users.forEach(u => {
+          const el = document.createElement("div"); el.className = "item";
+          const info = document.createElement("div"); info.className = "info";
+          const n = document.createElement("div"); n.className = "name"; n.textContent = u.name;
+          const s = document.createElement("div"); s.className = "sub";
+          s.textContent = u.last ? (u.last.type === "audio" ? "🎤 Message vocal" : u.last.text) : "Aucun message";
+          info.append(n, s);
+          const c = document.createElement("span"); c.className = "counter"; c.textContent = u.count + "/" + max;
+          const d = document.createElement("button"); d.className = "danger"; d.textContent = "🗑";
+          d.onclick = async e => {
+            e.stopPropagation();
+            if (!confirm("Supprimer définitivement la discussion avec " + u.name + " ?")) return;
+            try { await api("admin/users/" + u.id, { method: "DELETE" }); loadDash(); } catch (err) { alert(err.message); }
+          };
+          el.append(info, c, d);
+          el.onclick = () => { openConv = u.id; $("chatTitle").textContent = "Discussion avec " + u.name; setView("chat"); };
+          list.appendChild(el);
+        });
+      } catch (e) { if (auth) $("createErr").textContent = e.message; }
+    }
+
+    async function createUser() {
+      $("createErr").textContent = "";
+      const name = $("newName").value.trim();
+      if (!name) { $("createErr").textContent = "Entrez un nom."; return; }
+      try {
+        const r = await api("admin/users", { method: "POST", body: { name } });
+        $("newName").value = "";
+        $("mName").textContent = r.name; $("mCode").textContent = r.code; show("modal");
+        loadDash();
+      } catch (e) { $("createErr").textContent = e.message; }
+    }
+
+    /* ---------- Discussion ---------- */
+    const q = () => auth.role === "admin" ? "?conv=" + encodeURIComponent(openConv) : "";
+    let lastSig = "";
+
+    async function loadMsgs(force) {
+      try {
+        const r = await api("messages" + q());
+        if (auth.role === "user") $("chatTitle").textContent = "Discussion avec " + (auth.role === "user" ? "l'admin" : r.name);
+        const m = r.messages;
+        const sig = m.length + ":" + (m[m.length - 1]?.id || "");
+        if (!force && sig === lastSig) return;
+        lastSig = sig;
+        render(m, r.max);
+      } catch (e) {
+        if (auth && /n'existe plus/.test(e.message)) { alert(e.message); auth.role === "admin" ? start() : logout(); }
+      }
+    }
+
+    function render(msgs, max) {
+      const box = $("msgs"); box.innerHTML = "";
+      if (!msgs.length) { const d = document.createElement("div"); d.className = "sys"; d.textContent = "Aucun message. Écrivez le premier !"; box.appendChild(d); }
+      msgs.forEach(m => {
+        if (m.from === "system") { const d = document.createElement("div"); d.className = "sys"; d.textContent = m.text; box.appendChild(d); return; }
+        const el = document.createElement("div");
+        el.className = "msg " + (m.from === auth.role ? "right" : "left");  // mes messages à droite
+        if (m.type === "audio") {
+          const a = document.createElement("audio"); a.controls = true; el.appendChild(a);
+          if (audioCache.has(m.id)) a.src = audioCache.get(m.id);
+          else api("audio" + (auth.role === "admin" ? q() + "&id=" + m.id : "?id=" + m.id)).then(r => { audioCache.set(m.id, r.data); a.src = r.data; }).catch(() => { });
+        } else el.appendChild(document.createTextNode(m.text));
+        const t = document.createElement("small"); t.textContent = fmt(m.ts); el.appendChild(t);
+        box.appendChild(el);
+      });
+      $("counter").textContent = msgs.filter(m => m.from !== "system").length + "/" + max;
+      $("counter").className = "counter" + (msgs.length >= max - 10 ? " warn" : "");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function post(payload) {
+      $("sendBtn").disabled = true;
+      try { await api("messages" + q(), { method: "POST", body: payload }); await loadMsgs(true); }
+      catch (e) { alert(e.message); }
+      $("sendBtn").disabled = false;
+    }
+    function sendText() {
+      const v = $("msgInput").value.trim(); if (!v) return;
+      $("msgInput").value = ""; post({ type: "text", text: v });
+    }
+
+    /* ---------- Audio ---------- */
+    let recorder, chunks = [], recTimer;
+    async function toggleRec() {
+      if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recorder = new MediaRecorder(stream); chunks = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          clearTimeout(recTimer); stream.getTracks().forEach(t => t.stop());
+          $("rec").classList.remove("on"); $("rec").textContent = "🎤";
+          const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+          const r = new FileReader();
+          r.onload = () => post({ type: "audio", audio: r.result });
+          r.readAsDataURL(blob);
+        };
+        recorder.start(); $("rec").classList.add("on"); $("rec").textContent = "⏹";
+        recTimer = setTimeout(() => recorder.state === "recording" && recorder.stop(), MAX_AUDIO_S * 1000);
+      } catch (e) { alert("Micro inaccessible : autorisez-le dans le navigateur."); }
+    }
+
+    /* ---------- Événements ---------- */
+    $("loginBtn").onclick = login;
+    $("codeInput").onkeydown = e => e.key === "Enter" && login();
+    $("createBtn").onclick = createUser;
+    $("newName").onkeydown = e => e.key === "Enter" && createUser();
+    $("logout1").onclick = logout; $("logout2").onclick = logout;
+    $("backBtn").onclick = () => { openConv = null; lastSig = ""; setView("adminView"); };
+    $("sendBtn").onclick = sendText;
+    $("msgInput").onkeydown = e => e.key === "Enter" && sendText();
+    $("rec").onclick = toggleRec;
+    $("mClose").onclick = () => { hide("modal"); $("mCode").textContent = ""; };
+    $("copyBtn").onclick = async () => { try { await navigator.clipboard.writeText($("mCode").textContent); $("copyBtn").textContent = "Copié ✓"; } catch (e) { alert("Sélectionnez le code et copiez-le manuellement."); } setTimeout(() => $("copyBtn").textContent = "Copier", 1500); };
+
+    try { auth = JSON.parse(sessionStorage.getItem("auth")); } catch (e) { auth = null; }
+    start();
+  </script>
+</body>
+
+</html>
