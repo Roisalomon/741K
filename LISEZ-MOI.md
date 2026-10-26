@@ -15,7 +15,7 @@ chat-netlify/
 2. Sur Netlify : *Add new site → Import from Git* (ou `netlify init`).
 3. **Avant de tester**, dans *Site configuration → Environment variables*, ajoute :
    - `ADMIN_CODE` : ton code admin (choisis-en un long, avec majuscules, minuscules, chiffres, caractères spéciaux)
-   - `SECRET` : une longue chaîne aléatoire (40 caractères ou plus). Exemple de génération : `openssl rand -base64 48`
+   - `SECRET` : une longue chaîne aléatoire (40 caractères ou plus). Pour la générer, exécute dans un terminal la commande `openssl` avec les arguments `rand -base64 48`, puis colle **le résultat affiché** (et non la commande elle-même) comme valeur.
 4. Redéploie le site (*Deploys → Trigger deploy*).
 
 ## Fonctionnement
