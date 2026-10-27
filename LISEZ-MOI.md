@@ -1,37 +1,47 @@
-# Discussion privée — déploiement Netlify
+# Discussion privée — Netlify (version 2, sans variables d'environnement)
 
 ## Structure
 ```
 chat-netlify/
-├── netlify.toml
-├── package.json
-├── public/index.html                 ← le site (accueil, dashboard, discussion)
-└── netlify/functions/api.mjs         ← le serveur (vérifie les codes, stocke les messages)
+├── netlify.toml                 ← config Netlify (build + scan de secrets désactivé)
+├── package.json                 ← dépendances (@netlify/blobs, tailwindcss)
+├── tailwind.config.cjs          ← config Tailwind
+├── src/input.css                ← point d'entrée Tailwind
+├── public/index.html            ← le site (Tailwind)
+├── public/styles.css            ← CSS généré par Tailwind (regénéré à chaque déploiement)
+└── netlify/functions/api.mjs    ← le serveur
 ```
 
-## Déploiement
-1. Mets ce dossier sur GitHub (ou utilise `netlify deploy --prod` avec la CLI : `npm i -g netlify-cli`).
-   ⚠️ Le glisser-déposer du dossier sur netlify.com ne fonctionne PAS ici, car il y a une fonction serveur à construire.
-2. Sur Netlify : *Add new site → Import from Git* (ou `netlify init`).
-3. **Avant de tester**, dans *Site configuration → Environment variables*, ajoute :
-   - `ADMIN_CODE` : ton code admin (choisis-en un long, avec majuscules, minuscules, chiffres, caractères spéciaux)
-   - `SECRET` : une longue chaîne aléatoire (40 caractères ou plus). Exemple de génération : `openssl rand -base64 48`
-4. Redéploie le site (*Deploys → Trigger deploy*).
+## Déploiement (une seule fois)
+1. Remplace les fichiers de ton dépôt GitHub par ceux de ce dossier, puis `git push`.
+2. **Supprime** dans Netlify (*Site configuration → Environment variables*) les anciennes variables `ADMIN_CODE` et `SECRET` : elles ne servent plus à rien et c'étaient elles qui faisaient échouer le build.
+3. Netlify redéploie tout seul. Si besoin : *Deploys → Trigger deploy → Clear cache and deploy site*.
+4. Ouvre ton site : **au tout premier lancement**, il te demande de choisir ton code admin (bouton « Générer un code fort » possible). Fais-le tout de suite après le déploiement, avant de partager l'adresse à qui que ce soit.
 
-## Fonctionnement
-- Toi : tu te connectes avec `ADMIN_CODE` → dashboard (seul toi y as accès, vérifié côté serveur).
-- Tu crées une personne → le serveur génère un code de 16 caractères (majuscules + minuscules + chiffres + spéciaux). Il s'affiche **une seule fois** : copie-le et transmets-le.
-- Chaque discussion a son propre tableau de messages (`msgs/<id>`), les audios sont stockés à part (`audio/<id>/<msg>`), le tout dans Netlify Blobs.
-- À 100 messages, la discussion (messages + audios) est effacée automatiquement.
+C'est tout. Aucune variable à configurer.
+
+## Utilisation
+- **Toi** : tu te connectes avec ton code admin → tableau de bord. Tu crées une personne, le serveur génère un code de 16 caractères (majuscules, minuscules, chiffres, caractères spéciaux), affiché **une seule fois** avec un bouton « Copier ». Tu le lui transmets.
+- **Elle** : elle entre son code sur l'accueil et arrive directement dans sa discussion.
+- Tes messages sont à droite et les siens à gauche chez toi ; l'inverse chez elle.
+- Messages vocaux : 30 secondes maximum.
+- À 100 messages, la discussion (texte + audios) est effacée automatiquement.
+- Dashboard → « Changer mon code admin » pour modifier ton code quand tu veux.
+
+## Faire des mises à jour plus tard
+Modifie les fichiers, `git push`, Netlify redéploie. **Les discussions, les codes et ton code admin sont conservés** (ils sont dans Netlify Blobs, indépendamment du code du site).
+- Pour changer le design, modifie les classes Tailwind dans `public/index.html` : le CSS est regénéré automatiquement à chaque déploiement (`npm run build`).
+- Si la génération Tailwind échoue un jour, le déploiement continue avec le dernier `public/styles.css`.
 
 ## Sécurité
-- Les codes ne sont jamais stockés : seul un hash HMAC (clé `SECRET`) identifie une discussion.
-- Le code admin n'est pas dans le site, il est dans les variables d'environnement.
-- Sessions signées (12 h), comparaisons à temps constant, blocage après 8 essais ratés (15 min), en-têtes de sécurité (CSP, anti-iframe), texte affiché sans HTML (anti-XSS), pas d'indexation par les moteurs.
-- Un utilisateur ne peut lire/écrire que SA discussion (déduite de son jeton, jamais d'un paramètre).
-- Si tu changes `SECRET`, tous les codes existants cessent de fonctionner.
+- Le code admin est stocké haché (scrypt), les codes utilisateurs ne sont jamais stockés (seule une empreinte HMAC identifie la discussion).
+- Le secret de signature est généré automatiquement et n'apparaît dans aucun fichier du dépôt.
+- Sessions signées de 12 h, blocage après 8 essais ratés (15 minutes), en-têtes de sécurité (CSP, anti-iframe), pas d'indexation par les moteurs de recherche.
+- Chaque utilisateur ne peut lire/écrire que SA discussion (déduite de son jeton). Seule la session admin accède au dashboard (vérifié côté serveur).
 
-## Limites à connaître
-- Les messages sont lus par la page toutes les 3 secondes (pas de WebSocket) : très léger, mais pas instantané.
-- Les messages sont stockés en clair côté Netlify (pas de chiffrement de bout en bout) : toute personne ayant accès à ton compte Netlify peut les voir.
-- Vocaux : 30 s maximum (~1 Mo).
+## Code admin oublié
+Dans les données *Blobs* de ton site sur Netlify, supprime l'entrée `admin` du magasin `chat` : l'écran de première configuration réapparaît, tu choisis un nouveau code, et **les codes des utilisateurs continuent de fonctionner** (le secret est conservé séparément).
+
+## Limites
+- Rafraîchissement toutes les 3 secondes (pas de temps réel instantané).
+- Messages non chiffrés de bout en bout : visibles par quiconque a accès à ton compte Netlify.

@@ -1,9 +1,15 @@
 {
   "name": "discussion-privee",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.cjs -i ./src/input.css -o ./public/styles.css --minify || echo \"Tailwind non regenere : le fichier public/styles.css existant est conserve\""
+  },
   "dependencies": {
     "@netlify/blobs": "^8.1.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
   }
 }
