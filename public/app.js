@@ -1,117 +1,3 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<meta name="color-scheme" content="dark">
-<title>Discussion privée</title>
-<link rel="stylesheet" href="/styles.css">
-</head>
-<body class="flex h-dvh flex-col bg-slate-900 font-sans text-slate-200 antialiased">
-
-<!-- ================= ACCUEIL (connexion / première configuration) ================= -->
-<div id="login" class="m-auto w-full max-w-sm px-4">
-  <div class="flex flex-col gap-4 rounded-2xl bg-slate-800 p-7 text-center shadow-xl">
-    <h1 class="text-2xl font-semibold text-white">🔒 Discussion privée</h1>
-
-    <!-- Connexion -->
-    <form id="loginForm" class="flex flex-col gap-4" autocomplete="off">
-      <p class="text-sm text-slate-400">Entrez le code qui vous a été donné.</p>
-      <div class="flex gap-2">
-        <input id="codeInput" type="text" placeholder="Votre code" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-          class="w-full min-w-0 rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none [color-scheme:dark] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-        <button type="button" id="eyeBtn" title="Afficher / masquer"
-          class="shrink-0 rounded-xl border border-slate-600 px-3 text-lg hover:bg-slate-700">👁</button>
-      </div>
-      <div id="loginErr" class="min-h-[1.25rem] text-sm text-red-400"></div>
-      <button type="submit" id="loginBtn"
-        class="rounded-xl bg-indigo-500 px-4 py-3 text-base font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50">Entrer</button>
-    </form>
-
-    <!-- Première configuration (affichée une seule fois, tant qu'aucun admin n'existe) -->
-    <form id="setupForm" class="hidden flex-col gap-4" autocomplete="off">
-      <p class="text-sm text-amber-300">Première utilisation : choisissez votre <b>code administrateur</b> (10 caractères minimum). Notez-le bien, vous seul l'aurez.</p>
-      <input id="setupCode" type="text" placeholder="Votre code admin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-        class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none [color-scheme:dark] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-      <button type="button" id="genBtn"
-        class="rounded-xl border border-slate-600 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700">🎲 Générer un code fort</button>
-      <div id="setupErr" class="min-h-[1.25rem] text-sm text-red-400"></div>
-      <button type="submit" id="setupBtn"
-        class="rounded-xl bg-indigo-500 px-4 py-3 text-base font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50">Valider et entrer</button>
-    </form>
-  </div>
-</div>
-
-<!-- ================= DASHBOARD ADMIN ================= -->
-<div id="adminView" class="flex hidden min-h-0 flex-1 flex-col">
-  <header class="flex items-center gap-3 border-b border-slate-700 bg-slate-800 px-4 py-3">
-    <h2 class="flex-1 truncate text-[17px] font-semibold">🛠️ Tableau de bord</h2>
-    <button id="logout1" class="rounded-xl border border-slate-600 px-4 py-2 text-sm hover:bg-slate-700">Déconnexion</button>
-  </header>
-  <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 overflow-auto p-4">
-
-    <section class="flex flex-col gap-3 rounded-2xl bg-slate-800 p-4">
-      <h3 class="font-semibold text-white">Créer une discussion</h3>
-      <div class="flex gap-2">
-        <input id="newName" placeholder="Nom de la personne" autocomplete="off" maxlength="40"
-          class="w-full min-w-0 rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-        <button id="createBtn" class="shrink-0 rounded-xl bg-indigo-500 px-5 py-3 font-medium text-white hover:bg-indigo-400 disabled:opacity-50">Créer</button>
-      </div>
-      <div id="createErr" class="min-h-[1.25rem] text-sm text-red-400"></div>
-    </section>
-
-    <section class="flex flex-col gap-3 rounded-2xl bg-slate-800 p-4">
-      <h3 class="font-semibold text-white">Mes discussions (<span id="nbUsers">0</span>)</h3>
-      <div id="list" class="flex flex-col gap-2"></div>
-    </section>
-
-    <details class="rounded-2xl bg-slate-800 p-4">
-      <summary class="cursor-pointer font-semibold text-white">⚙️ Changer mon code admin</summary>
-      <div class="mt-3 flex flex-col gap-3">
-        <input id="pwdCur" placeholder="Code actuel" autocomplete="off" spellcheck="false"
-          class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-        <input id="pwdNew" placeholder="Nouveau code (10 caractères minimum)" autocomplete="off" spellcheck="false"
-          class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-        <button id="pwdBtn" class="rounded-xl bg-indigo-500 px-4 py-3 font-medium text-white hover:bg-indigo-400 disabled:opacity-50">Changer le code</button>
-        <div id="pwdMsg" class="min-h-[1.25rem] text-sm"></div>
-      </div>
-    </details>
-  </div>
-</div>
-
-<!-- ================= PAGE DE DISCUSSION ================= -->
-<div id="chat" class="flex hidden min-h-0 flex-1 flex-col">
-  <header class="flex items-center gap-3 border-b border-slate-700 bg-slate-800 px-4 py-3">
-    <button id="backBtn" class="hidden rounded-xl border border-slate-600 px-3 py-2 text-sm hover:bg-slate-700">←</button>
-    <h2 id="chatTitle" class="flex-1 truncate text-[17px] font-semibold">Discussion</h2>
-    <span id="counter" class="whitespace-nowrap text-sm text-slate-400"></span>
-    <button id="logout2" class="rounded-xl border border-slate-600 px-4 py-2 text-sm hover:bg-slate-700">Quitter</button>
-  </header>
-  <div id="msgs" class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-2 overflow-auto p-4"></div>
-  <div class="mx-auto flex w-full max-w-3xl gap-2 rounded-t-xl border-t border-slate-700 bg-slate-800 p-3">
-    <input id="msgInput" placeholder="Écrire un message…" autocomplete="off" maxlength="2000"
-      class="w-full min-w-0 rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 text-base text-white placeholder-slate-500 caret-indigo-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
-    <button id="rec" title="Message vocal" class="shrink-0 rounded-xl border border-slate-600 px-4 text-lg hover:bg-slate-700">🎤</button>
-    <button id="sendBtn" class="shrink-0 rounded-xl bg-indigo-500 px-5 py-3 font-medium text-white hover:bg-indigo-400 disabled:opacity-50">Envoyer</button>
-  </div>
-</div>
-
-<!-- ================= FENÊTRE : CODE GÉNÉRÉ ================= -->
-<div id="modal" class="fixed inset-0 z-10 flex hidden items-center justify-center bg-black/70 p-4">
-  <div class="flex w-full max-w-md flex-col gap-4 rounded-2xl bg-slate-800 p-6 text-center shadow-2xl">
-    <h3 class="text-lg font-semibold text-white">✅ Discussion créée</h3>
-    <p>Code à donner à <b id="mName"></b> :</p>
-    <div id="mCode" class="select-all break-all rounded-xl border border-dashed border-indigo-500 bg-slate-900 p-4 font-mono text-lg text-white"></div>
-    <p class="text-sm text-slate-400">⚠️ Ce code ne sera <b>plus jamais affiché</b> : copie-le maintenant. Il n'est pas conservé en clair sur le serveur.</p>
-    <div class="flex gap-2">
-      <button id="copyBtn" class="flex-1 rounded-xl bg-indigo-500 px-4 py-3 font-medium text-white hover:bg-indigo-400">Copier</button>
-      <button id="mClose" class="flex-1 rounded-xl border border-slate-600 px-4 py-3 hover:bg-slate-700">Fermer</button>
-    </div>
-  </div>
-</div>
-
-<script>
 const MAX_AUDIO_S = 30;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove("hidden");
@@ -122,7 +8,7 @@ let auth = null;       // {token, role}
 let openConv = null;   // id de la discussion ouverte (côté admin)
 let timer = null;
 let lastSig = "";
-const audioCache = new Map();
+const mediaCache = new Map(); // fichiers déjà téléchargés (audio, image, vidéo)
 
 /* ---------- API ---------- */
 async function api(path, opts = {}){
@@ -145,12 +31,15 @@ function setView(v){
   ["login","adminView","chat"].forEach(hide);
   show(v);
   clearInterval(timer); timer = null;
-  if(v === "adminView"){ loadDash(); timer = setInterval(loadDash, 5000); }
-  if(v === "chat"){ lastSig = ""; loadMsgs(true); timer = setInterval(()=>loadMsgs(false), 3000); }
+  if(v === "adminView"){ loadDash(); timer = setInterval(loadDash, 4000); }
+  if(v === "chat"){
+    lastSig = ""; loadMsgs(true); timer = setInterval(()=>loadMsgs(false), 1200);
+    $("clearBtn").classList.toggle("hidden", auth.role !== "admin");
+  }
 }
 function saveAuth(){ try{ sessionStorage.setItem("auth", JSON.stringify(auth)); }catch(e){} }
 function logout(){
-  auth = null; openConv = null; audioCache.clear();
+  auth = null; openConv = null; mediaCache.clear();
   try{ sessionStorage.removeItem("auth"); }catch(e){}
   $("codeInput").value = ""; $("loginErr").textContent = "";
   showLogin();
@@ -225,7 +114,9 @@ async function loadDash(){
       const info = document.createElement("div"); info.className = "min-w-0 flex-1";
       const n = document.createElement("div"); n.className = "font-semibold text-white"; n.textContent = u.name;
       const s = document.createElement("div"); s.className = "truncate text-sm text-slate-400";
-      s.textContent = u.last ? (u.last.type === "audio" ? "🎤 Message vocal" : u.last.text) : "Aucun message";
+      s.textContent = u.last
+        ? (u.last.type === "audio" ? "🎤 Message vocal" : u.last.type === "image" ? "🖼️ Image" : u.last.type === "video" ? "🎬 Vidéo" : u.last.text)
+        : "Aucun message";
       info.append(n, s);
       const c = document.createElement("span"); c.className = "whitespace-nowrap text-sm text-slate-400"; c.textContent = u.count + "/" + max;
       const d = document.createElement("button"); d.className = "rounded-xl bg-red-500 px-3 py-2 text-white hover:bg-red-400"; d.textContent = "🗑"; d.title = "Supprimer";
@@ -302,11 +193,16 @@ function render(msgs, max){
       ? "max-w-[78%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-indigo-600 px-3.5 py-2 text-white"
       : "max-w-[78%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-sm bg-slate-700 px-3.5 py-2 text-slate-100";
     el.dataset.side = mine ? "right" : "left";
-    if(m.type === "audio"){
-      const a = document.createElement("audio"); a.controls = true; a.className = "h-9 max-w-full"; el.appendChild(a);
-      if(audioCache.has(m.id)) a.src = audioCache.get(m.id);
-      else api("audio" + (auth.role === "admin" ? q() + "&id=" + m.id : "?id=" + m.id))
-        .then(r => { audioCache.set(m.id, r.data); a.src = r.data; }).catch(() => {});
+    if(m.type === "audio" || m.type === "image" || m.type === "video"){
+      const tag = m.type === "audio" ? "audio" : m.type === "image" ? "img" : "video";
+      const node = document.createElement(tag);
+      node.className = m.type === "audio" ? "h-9 max-w-full" : "max-w-full rounded-lg";
+      if(m.type !== "image") node.controls = true;
+      if(m.type === "image") node.alt = "Image envoyée";
+      el.appendChild(node);
+      if(mediaCache.has(m.id)) node.src = mediaCache.get(m.id);
+      else api("media" + (auth.role === "admin" ? q() + "&id=" + m.id : "?id=" + m.id))
+        .then(r => { mediaCache.set(m.id, r.data); node.src = r.data; }).catch(() => {});
     } else el.appendChild(document.createTextNode(m.text));
     const t = document.createElement("small"); t.className = "mt-1 block text-right text-[11px] opacity-70"; t.textContent = fmt(m.ts);
     el.appendChild(t);
@@ -351,6 +247,30 @@ async function toggleRec(){
   }catch(e){ alert("Micro inaccessible : autorisez-le dans le navigateur."); }
 }
 
+/* ---------- Image / vidéo ---------- */
+const MAX_IMAGE_MB = 3.5, MAX_VIDEO_MB = 5.5;
+async function pickMedia(){
+  const f = $("mediaInput").files[0]; $("mediaInput").value = "";
+  if(!f) return;
+  const isImg = f.type.startsWith("image/"), isVid = f.type.startsWith("video/");
+  if(!isImg && !isVid){ alert("Seules les images et les vidéos sont acceptées."); return; }
+  const maxMB = isImg ? MAX_IMAGE_MB : MAX_VIDEO_MB;
+  if(f.size > maxMB * 1024 * 1024){
+    alert(`Fichier trop lourd (${maxMB} Mo maximum).` + (isVid ? " Gardez vos vidéos très courtes (quelques secondes)." : ""));
+    return;
+  }
+  const r = new FileReader();
+  r.onload = () => post({ type: isImg ? "image" : "video", media: r.result });
+  r.readAsDataURL(f);
+}
+
+/* ---------- Vider une discussion (admin) ---------- */
+async function clearChat(){
+  if(!confirm("Vider cette discussion ? Tous les messages et fichiers seront supprimés définitivement. Le code de la personne restera valide, elle pourra continuer à écrire.")) return;
+  try{ await api("admin/clear/" + openConv, {method:"POST"}); await loadMsgs(true); }
+  catch(e){ alert(e.message); }
+}
+
 /* ---------- Événements ---------- */
 $("loginForm").addEventListener("submit", login);
 $("setupForm").addEventListener("submit", setup);
@@ -364,6 +284,9 @@ $("backBtn").onclick = () => { openConv = null; lastSig = ""; setView("adminView
 $("sendBtn").onclick = sendText;
 $("msgInput").addEventListener("keydown", e => { if(e.key === "Enter") sendText(); });
 $("rec").onclick = toggleRec;
+$("mediaBtn").onclick = () => $("mediaInput").click();
+$("mediaInput").onchange = pickMedia;
+$("clearBtn").onclick = clearChat;
 $("mClose").onclick = () => { hide("modal"); $("mCode").textContent = ""; };
 $("copyBtn").onclick = async () => {
   try{ await navigator.clipboard.writeText($("mCode").textContent); $("copyBtn").textContent = "Copié ✓"; }
@@ -371,8 +294,11 @@ $("copyBtn").onclick = async () => {
   setTimeout(() => $("copyBtn").textContent = "Copier", 1500);
 };
 
+// Flou cosmétique quand la fenêtre perd le focus (ne bloque pas les captures, voir styles.css)
+function updatePrivacyBlur(){ document.body.classList.toggle("privacy-blur", document.hidden || !document.hasFocus()); }
+document.addEventListener("visibilitychange", updatePrivacyBlur);
+window.addEventListener("blur", updatePrivacyBlur);
+window.addEventListener("focus", updatePrivacyBlur);
+
 try{ auth = JSON.parse(sessionStorage.getItem("auth")); }catch(e){ auth = null; }
 start();
-</script>
-</body>
-</html>

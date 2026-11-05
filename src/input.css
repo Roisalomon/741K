@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Flou quand la fenêtre n'a plus le focus (ex. changement d'onglet ou de fenêtre).
+   Ceci ne bloque NI les captures d'écran NI les enregistrements d'écran : aucune
+   technologie web ne peut le faire. C'est seulement un confort visuel. */
+.privacy-blur #msgs, .privacy-blur #mCode {
+  filter: blur(12px);
+  transition: filter .15s ease;
+}

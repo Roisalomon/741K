@@ -14,6 +14,8 @@ const MAX_MESSAGES = 100;
 const TOKEN_TTL = 12 * 3600 * 1000;      // session : 12 h
 const MAX_TEXT = 2000;
 const MAX_AUDIO_CHARS = 1_500_000;       // ~1 Mo en base64 (≈ 30 s de vocal)
+const MAX_IMAGE_CHARS = 5_000_000;       // ~3,6 Mo de fichier réel
+const MAX_VIDEO_CHARS = 8_000_000;       // ~5,8 Mo de fichier réel : vidéos COURTES uniquement
 const MIN_ADMIN_CODE = 10;
 
 export const config = { path: "/api/*" };
@@ -30,7 +32,13 @@ const mac = (secret, s) => crypto.createHmac("sha256", secret).update(s).digest(
 const scrypt = (pw, salt) =>
   new Promise((res, rej) => crypto.scrypt(pw, salt, 32, (e, k) => (e ? rej(e) : res(k))));
 const isId = (s) => typeof s === "string" && /^[0-9a-f]{32}$/.test(s);
-const readBody = async (req) => { try { return await req.json(); } catch { return {}; } };
+const MAX_BODY_BYTES = 8_500_000; // un peu plus que MAX_VIDEO_CHARS, pour laisser passer les plus gros fichiers
+// Refuse une requête trop volumineuse avant même de la lire en mémoire (anti-saturation).
+async function readBody(req) {
+  const len = Number(req.headers.get("content-length") || 0);
+  if (len > MAX_BODY_BYTES) return { __tooLarge: true };
+  try { return await req.json(); } catch { return {}; }
+}
 
 // Identifiant de discussion = empreinte secrète du code (le code n'est JAMAIS stocké)
 const convId = (secret, code) => mac(secret, "conv:" + code).toString("hex").slice(0, 32);
@@ -94,8 +102,13 @@ async function guard(store, req, context) {
 
 async function wipe(store, id) {
   await store.setJSON("msgs/" + id, []);
-  const { blobs } = await store.list({ prefix: "audio/" + id + "/" });
-  await Promise.all(blobs.map((b) => store.delete(b.key)));
+  // "audio/" = ancien emplacement (vocaux créés avant cette mise à jour), "media/" = nouvel
+  // emplacement commun aux vocaux, images et vidéos. On nettoie les deux par sécurité.
+  const [a, m] = await Promise.all([
+    store.list({ prefix: "audio/" + id + "/" }),
+    store.list({ prefix: "media/" + id + "/" }),
+  ]);
+  await Promise.all([...a.blobs, ...m.blobs].map((b) => store.delete(b.key)));
 }
 
 /* ============ Handler ============ */
@@ -123,17 +136,32 @@ async function handle(req, context) {
   /* ---------- Le site est-il déjà configuré ? ---------- */
   if (route === "status" && method === "GET") return json({ configured: !!admin });
 
-  /* ---------- Première configuration : choix du code admin ---------- */
+  /* ---------- Première configuration : choix du code admin ----------
+     Écriture atomique (onlyIfNew) : si deux requêtes arrivent en même
+     temps, une seule peut "gagner" la place d'admin. Sans ça, deux
+     visiteurs simultanés pourraient tous les deux croire avoir réussi
+     la configuration, et l'un écraserait l'autre au hasard. ---------- */
   if (route === "setup" && method === "POST") {
     if (admin) return json({ error: "Le site est déjà configuré." }, 403);
     const { code } = await readBody(req);
     const c = typeof code === "string" ? code.trim() : "";
     if (c.length < MIN_ADMIN_CODE || c.length > 100)
       return json({ error: `Le code admin doit contenir entre ${MIN_ADMIN_CODE} et 100 caractères.` }, 400);
+
     let sec = secretRec;
-    if (!sec) { sec = { key: crypto.randomBytes(32).toString("hex") }; await store.setJSON("secret", sec); }
+    if (!sec) {
+      const candidate = { key: crypto.randomBytes(32).toString("hex") };
+      const r = await store.setJSON("secret", candidate, { onlyIfNew: true });
+      sec = r && r.modified === false ? await store.get("secret", { type: "json" }) : candidate;
+    }
+
     const a = await makeAdmin(c, 1);
-    await store.setJSON("admin", a);
+    const claim = await store.setJSON("admin", a, { onlyIfNew: true });
+    if (claim && claim.modified === false) {
+      // Quelqu'un d'autre a configuré le site entre-temps : on refuse, on ne prend jamais sa place.
+      return json({ error: "Le site vient d'être configuré par quelqu'un d'autre. Si ce n'est pas vous, changez immédiatement de site." }, 409);
+    }
+
     const token = signToken(Buffer.from(sec.key, "hex"), { role: "admin", av: 1, exp: Date.now() + TOKEN_TTL });
     return json({ token, role: "admin" });
   }
@@ -181,7 +209,7 @@ async function handle(req, context) {
         const msgs = (await store.get("msgs/" + id, { type: "json" })) || [];
         const real = msgs.filter((m) => m.from !== "system");
         const last = real[real.length - 1];
-        out.push({ id, name: conv.name, created: conv.created, count: msgs.length,
+        out.push({ id, name: conv.name, created: conv.created, count: real.length,
           last: last ? { type: last.type, text: last.text, from: last.from } : null });
       }
       out.sort((a, b) => b.created - a.created);
@@ -200,11 +228,23 @@ async function handle(req, context) {
       return json({ id, name: n, code });
     }
 
-    // Supprimer une discussion
+    // Supprimer une discussion (la personne + son code arrêtent définitivement de fonctionner)
     if (parts[1] === "users" && method === "DELETE" && isId(parts[2])) {
       await wipe(store, parts[2]);
       await store.delete("conv/" + parts[2]);
       await store.delete("msgs/" + parts[2]);
+      return json({ ok: true });
+    }
+
+    // Vider une discussion (garde la personne et son code : il continue de fonctionner)
+    if (parts[1] === "clear" && method === "POST" && isId(parts[2])) {
+      const target = await store.get("conv/" + parts[2], { type: "json" });
+      if (!target) return json({ error: "Discussion introuvable." }, 404);
+      await wipe(store, parts[2]);
+      await store.setJSON("msgs/" + parts[2], [{
+        id: "sys" + Date.now().toString(36), from: "system", type: "text", ts: Date.now(),
+        text: "🧹 L'administrateur a vidé cette discussion.",
+      }]);
       return json({ ok: true });
     }
 
@@ -242,13 +282,23 @@ async function handle(req, context) {
 
   if (route === "messages" && method === "POST") {
     const b = await readBody(req);
+    if (b.__tooLarge) return json({ error: "Message trop volumineux." }, 413);
     let msgs = (await store.get("msgs/" + id, { type: "json" })) || [];
     const msg = { id: Date.now().toString(36) + crypto.randomBytes(3).toString("hex"), from: me.role, ts: Date.now() };
 
+    const media = b.media || b.audio; // "media" = nouveau champ (image/vidéo), "audio" = ancien champ (compatibilité)
     if (b.type === "audio") {
-      if (typeof b.audio !== "string" || !b.audio.startsWith("data:audio/") || b.audio.length > MAX_AUDIO_CHARS)
+      if (typeof media !== "string" || !media.startsWith("data:audio/") || media.length > MAX_AUDIO_CHARS)
         return json({ error: "Audio invalide ou trop long." }, 400);
       msg.type = "audio";
+    } else if (b.type === "image") {
+      if (typeof media !== "string" || !media.startsWith("data:image/") || media.length > MAX_IMAGE_CHARS)
+        return json({ error: "Image invalide ou trop lourde (≈3,5 Mo maximum)." }, 400);
+      msg.type = "image";
+    } else if (b.type === "video") {
+      if (typeof media !== "string" || !media.startsWith("data:video/") || media.length > MAX_VIDEO_CHARS)
+        return json({ error: "Vidéo invalide, trop lourde, ou trop longue (≈5 secondes maximum conseillées)." }, 400);
+      msg.type = "video";
     } else {
       const t = typeof b.text === "string" ? b.text.trim() : "";
       if (!t || t.length > MAX_TEXT) return json({ error: "Message vide ou trop long." }, 400);
@@ -261,17 +311,19 @@ async function handle(req, context) {
       msgs = [{ id: "sys" + Date.now().toString(36), from: "system", type: "text", ts: Date.now(),
         text: "🔒 Limite de " + MAX_MESSAGES + " messages atteinte : l'ancienne discussion a été effacée." }];
     }
-    if (msg.type === "audio") await store.set("audio/" + id + "/" + msg.id, b.audio);
+    if (msg.type === "audio" || msg.type === "image" || msg.type === "video")
+      await store.set("media/" + id + "/" + msg.id, media);
     msgs.push(msg);
     await store.setJSON("msgs/" + id, msgs);
     return json({ ok: true, message: msg });
   }
 
-  /* ---------- AUDIO ---------- */
-  if (route === "audio" && method === "GET") {
+  /* ---------- FICHIERS (audio / image / vidéo) ----------
+     "audio" est gardé comme alias pour que les anciens vocaux restent lisibles. ---------- */
+  if ((route === "media" || route === "audio") && method === "GET") {
     const mid = url.searchParams.get("id") || "";
     if (!/^[a-z0-9]{4,40}$/.test(mid)) return json({ error: "Id invalide." }, 400);
-    const data = await store.get("audio/" + id + "/" + mid);
+    const data = (await store.get("media/" + id + "/" + mid)) || (await store.get("audio/" + id + "/" + mid));
     if (!data) return json({ error: "Introuvable." }, 404);
     return json({ data });
   }
